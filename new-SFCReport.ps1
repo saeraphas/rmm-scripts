@@ -21,24 +21,24 @@
 #Requires -Version 4.0
 
 $provider = "Nexigen"
-$SFCRunThresholdDays = 30 
 $SFCLog = "C:\$($provider)\SFC.txt"
 
 function checkReportAge {
+    $SFCRunThresholdDays = 30 
     $today = Get-Date
     $lastModifiedDate = (Get-Item $SFCLog).LastWriteTime
     $dateDiff = ($today - $lastModifiedDate).Days
-    if ($dateDiff -gt $SFCRunThresholdDays) { return $true } else { exit }
+    if ($dateDiff -gt $SFCRunThresholdDays) {} else { exit }
 }
 
 function checkStorage {
+    $sleepTimeMaxMinutes = 30
     $diskMake = Get-PhysicalDisk | Where-Object { $_.DeviceID -eq '0' } | Select-Object -ExpandProperty Manufacturer
-    $sleepTimeMaxMinutes = 1
     $sleepTimeSeconds = (Get-Random -Minimum 0 -Maximum (60 * $sleepTimeMaxMinutes))
     switch ($diskMake) {
-        { $diskMake -eq "Msft" } { Write-Verbose "Sleeping for $sleepTimeSeconds." ; Start-Sleep -Seconds $sleepTimeSeconds; return $true }
-        { $diskMake -eq "VMware" } { Write-Verbose "Sleeping for $sleepTimeSeconds." ; Start-Sleep -Seconds $sleepTimeSeconds; return $true }
-        Default { return $true }
+        { $diskMake -eq "Msft" } { Start-Sleep -Seconds $sleepTimeSeconds }
+        { $diskMake -eq "VMware" } { Start-Sleep -Seconds $sleepTimeSeconds }
+        Default {}
     }
 }
 
@@ -50,7 +50,7 @@ function checkOutput {
         { $null -eq $_ } { startSFC } #this will be the case if previous run was interrupted 
         { $_ -match "Windows Resource Protection did not find any integrity violations." } { exit } #no need to run if last output was OK
         { $_ -match "Windows Resource Protection found corrupt files and successfully repaired them." } { startSFC } #run again if things were fixed
-        Default { startSFC }
+        Default { checkReportAge }
     }
 }
 
@@ -62,9 +62,8 @@ $fileExists = Test-Path -Path $SFCLog
 
 if ($fileExists) {
     $output = Get-Content -Path $SFCLog -Encoding unicode | Where-Object { $_ -match "Windows Resource Protection" } | Select-Object -First 1
-    checkReportAge
     checkStorage
-    checkOutput $output   
+    checkOutput($output)
 } else {
     checkStorage
     startSFC
@@ -72,4 +71,4 @@ if ($fileExists) {
 
 $output = Get-Content -Path $SFCLog -Encoding unicode | Where-Object { $_ -match "Windows Resource Protection" } | Select-Object -First 1
 
-#et-ExecutionPolicy $originalExecutionPolicy
+Set-ExecutionPolicy $originalExecutionPolicy
