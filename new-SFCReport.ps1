@@ -3,7 +3,9 @@
 	This script runs SFC against the local system and stores the output to a variable accessible to an RMM agent. 
 
 .DESCRIPTION
-	This script 
+	This script runs SFC against the local system and stores the output to a variable accessible to an RMM agent.
+    To prevent degrading performance on endpoints, this script will exit immediately if it has produced report output within the last 30 days. 
+    To prevent degrading performance on virtual servers, this script will sleep between 1 and 60 minutes before continuing. 
 	
 .EXAMPLE
 	.\new-SFCReport.ps1
