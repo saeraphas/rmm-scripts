@@ -94,7 +94,6 @@ if ($fileExists) {
     checkStorage
     startSFC
     $output = readSFCLog($SFCLog)
-    checkOutput($output)
 }
 
 Set-ExecutionPolicy $originalExecutionPolicy
