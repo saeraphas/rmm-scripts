@@ -19,28 +19,38 @@
 .LINK
 	https://github.com/saeraphas/rmm-scripts
 #>
-
 #Requires -Version 4.0
+[CmdletBinding()]
+param()
 
 $provider = "Nexigen"
 $SFCLog = "C:\$($provider)\SFC.txt"
+$output = "SFC log not yet parsed."
 
 function checkReportAge {
+    Write-Verbose "Checking SFC log age."
     $SFCRunThresholdDays = 30 
     $today = Get-Date
     $lastModifiedDate = (Get-Item $SFCLog).LastWriteTime
     $dateDiff = ($today - $lastModifiedDate).Days
-    if ($dateDiff -gt $SFCRunThresholdDays) {} else { exit }
+    Write-Verbose "SFC log is $dateDiff days old."
+    if ($dateDiff -gt $SFCRunThresholdDays) {
+        Write-Verbose "Continuing."
+    } else { 
+        Write-Verbose "Exiting."
+        exit 
+    }
 }
 
 function checkStorage {
+    Write-Verbose "Checking for virtual disks."
     $sleepTimeMaxMinutes = 30
     $diskMake = Get-PhysicalDisk | Where-Object { $_.DeviceID -eq '0' } | Select-Object -ExpandProperty Manufacturer
     $sleepTimeSeconds = (Get-Random -Minimum 0 -Maximum (60 * $sleepTimeMaxMinutes))
     switch ($diskMake) {
-        { $diskMake -eq "Msft" } { Start-Sleep -Seconds $sleepTimeSeconds }
-        { $diskMake -eq "VMware" } { Start-Sleep -Seconds $sleepTimeSeconds }
-        Default {}
+        { $diskMake -eq "Msft" } { Write-Verbose "Sleeping for $sleepTimeMaxMinutes minutes." ; Start-Sleep -Seconds $sleepTimeSeconds }
+        { $diskMake -eq "VMware" } { Write-Verbose "Sleeping for $sleepTimeMaxMinutes minutes." ; Start-Sleep -Seconds $sleepTimeSeconds }
+        Default {Write-Verbose "Continuing."}
     }
 }
 
@@ -48,29 +58,43 @@ function checkOutput {
     param (
         $output
     )
+    Write-Verbose "Checking SFC log file content."
     switch ($output) {
         { $null -eq $_ } { startSFC } #this will be the case if previous run was interrupted 
-        { $_ -match "Windows Resource Protection did not find any integrity violations." } { exit } #no need to run if last output was OK
+        { $_ -match "Windows Resource Protection did not find any integrity violations." } { Write-Verbose "$_"; exit } #no need to run if last output was OK
         { $_ -match "Windows Resource Protection found corrupt files and successfully repaired them." } { startSFC } #run again if things were fixed
+        { $_ -match "There is a system repair pending which requires reboot to complete." } { Write-Verbose "$_"; exit } #no need to re-run if waiting on reboot
         Default { checkReportAge }
     }
 }
 
 Function startSFC {
+    Write-Verbose "Starting new SFC scan."
     Start-Process -FilePath "C:\Windows\System32\sfc.exe" -ArgumentList '/scannow' -RedirectStandardOutput $SFCLog -Wait -WindowStyle Hidden
 }
 
+function readSFCLog {
+    param (
+        $SFCLog
+    )
+    Write-Verbose "Checking SFC log for matching statuses."
+    Get-Content -Path $SFCLog -Encoding unicode | Where-Object { $_ -match "Windows Resource Protection" -or $_ -match "system repair pending" } | Select-Object -First 1
+}
+
+Write-Verbose "Checking for existing SFC log file."
 $fileExists = Test-Path -Path $SFCLog
 
 if ($fileExists) {
-    $output = Get-Content -Path $SFCLog -Encoding unicode | Where-Object { $_ -match "Windows Resource Protection" } | Select-Object -First 1
+    Write-Verbose "Existing SFC log file found."
     checkStorage
+    $output = readSFCLog($SFCLog)
     checkOutput($output)
 } else {
+    Write-Verbose "Existing SFC log file NOT found."
     checkStorage
     startSFC
+    $output = readSFCLog($SFCLog)
+    checkOutput($output)
 }
-
-$output = Get-Content -Path $SFCLog -Encoding unicode | Where-Object { $_ -match "Windows Resource Protection" } | Select-Object -First 1
 
 Set-ExecutionPolicy $originalExecutionPolicy
