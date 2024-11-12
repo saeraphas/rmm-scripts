@@ -28,7 +28,7 @@ $SFCLog = "C:\$($provider)\SFC.txt"
 $output = "SFC log not yet parsed."
 
 function checkReportAge {
-    Write-Verbose "Checking SFC log age."
+    Write-Verbose "Checking whether new scan should run based on SFC log age."
     $SFCRunThresholdDays = 30 
     $today = Get-Date
     $lastModifiedDate = (Get-Item $SFCLog).LastWriteTime
@@ -43,7 +43,7 @@ function checkReportAge {
 }
 
 function checkStorage {
-    Write-Verbose "Checking for virtual disks."
+    Write-Verbose "Checking whether processing should be delayed based on presence of virtual disks."
     $sleepTimeMaxMinutes = 30
     $diskMake = Get-PhysicalDisk | Where-Object { $_.DeviceID -eq '0' } | Select-Object -ExpandProperty Manufacturer
     $sleepTimeSeconds = (Get-Random -Minimum 0 -Maximum (60 * $sleepTimeMaxMinutes))
@@ -58,12 +58,12 @@ function checkOutput {
     param (
         $output
     )
-    Write-Verbose "Checking SFC log file content."
+    Write-Verbose "Checking whether new scan should run based on SFC log status summary."
     switch ($output) {
         { $null -eq $_ } { startSFC } #this will be the case if previous run was interrupted 
-        { $_ -match "Windows Resource Protection did not find any integrity violations." } { Write-Verbose "$_"; exit } #no need to run if last output was OK
+        { $_ -match "Windows Resource Protection did not find any integrity violations." } { Write-Verbose "Exiting."; exit } #no need to run if last output was OK
         { $_ -match "Windows Resource Protection found corrupt files and successfully repaired them." } { startSFC } #run again if things were fixed
-        { $_ -match "There is a system repair pending which requires reboot to complete." } { Write-Verbose "$_"; exit } #no need to re-run if waiting on reboot
+        { $_ -match "There is a system repair pending which requires reboot to complete." } { Write-Verbose "Exiting."; exit } #no need to re-run if waiting on reboot
         Default { checkReportAge }
     }
 }
@@ -78,7 +78,10 @@ function readSFCLog {
         $SFCLog
     )
     Write-Verbose "Checking SFC log for matching statuses."
-    Get-Content -Path $SFCLog -Encoding unicode | Where-Object { $_ -match "Windows Resource Protection" -or $_ -match "system repair pending" } | Select-Object -First 1
+    $StatusSummary = Get-Content -Path $SFCLog -Encoding unicode | Where-Object { $_ -match "Windows Resource Protection" -or $_ -match "system repair pending" } | Select-Object -First 1
+    if ($null -eq $StatusSummary){$StatusSummary = "SFC log does not contain a matching status."}
+    Write-Verbose "Status Summary: $StatusSummary"
+    return $StatusSummary
 }
 
 Write-Verbose "Checking for existing SFC log file."
