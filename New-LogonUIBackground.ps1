@@ -22,16 +22,26 @@ param ()
 $remoteImageURI = "https://nocinstallerstorage.blob.core.windows.net/root/Installers/nexigen_logo_on_gray_1920x1080.jpg"
 $localImagePath = "C:\nexigen\wallpaper_1920x1080.jpg"
 
-# Ensure TLS 1.2 is used for the connection
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+# Check if the local image path already exists
+if (Test-Path -Path $localImagePath) {
+    Write-Output "The file already exists at $localImagePath."
+}
+else {
+    # Download the image without showing progress
+    Invoke-WebRequest -Uri $remoteImageURI -OutFile $localImagePath -UseBasicParsing
 
-# Download the image without showing progress
-Invoke-WebRequest -Uri $remoteImageURI -OutFile $localImagePath -UseBasicParsing
+    # Ensure TLS 1.2 is used for the connection
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+    # Download the image without showing progress
+    Invoke-WebRequest -Uri $remoteImageURI -OutFile $localImagePath -UseBasicParsing
+} 
 
 # Check the file size
 $fileInfo = Get-Item $localImagePath
 if ($fileInfo.Length -gt 256KB) {
     Write-Error "The downloaded file is larger than 256 KB."
+    Remove-Item $localImagePath
     exit 1
 }
 
@@ -40,5 +50,24 @@ $registryPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\
 Set-ItemProperty -Path $registryPath -Name "OEMBackground" -Value 1
 
 # Copy the image to the required location for the login screen background
-$destinationPath = "C:\Windows\System32\oobe\info\backgrounds\backgroundDefault.jpg"
+$destinationImage = "backgroundDefault.jpg"
+$destinationDirectory = "C:\Windows\System32\oobe\info\backgrounds"
+$destinationPath = "$destinationDirectory\$destinationImage"
+if (-not (Test-Path -Path $destinationDirectory)) {
+    New-Item -ItemType Directory -Path $destinationDirectory -Force
+}
 Copy-Item -Path $localImagePath -Destination $destinationPath -Force
+
+# Set the downloaded image as the lock screen background
+$lockScreenPath = "C:\Windows\Web\Screen\lockScreen.jpg"
+Copy-Item -Path $localImagePath -Destination $lockScreenPath -Force
+
+# Ensure the lock screen registry keys exist
+$lockScreenKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP"
+if (-not (Test-Path -Path $lockScreenKey)) {
+    New-Item -Path $lockScreenKey -Force
+}
+
+# Update the lock screen background setting
+Set-ItemProperty -Path $lockScreenKey -Name "LockScreenImagePath" -Value $lockScreenPath
+Set-ItemProperty -Path $lockScreenKey -Name "LockScreenImageStatus" -Value 1
