@@ -21,6 +21,7 @@ param ()
 
 #$NewLine = [Environment]::NewLine
 $OrganizationName = "Nexigen Communications, LLC"
+$legalnoticecaption = "NOTICE"
 $DisclaimerBlock = @'
 You are accessing a ORGANIZATIONNAME protected computer system that contains proprietary and confidential information. Only authorized users may access this resource. By continuing to use this system, you agree to the following terms.
 
@@ -36,16 +37,16 @@ If you are not an authorized user, please disconnect immediately.
 '@
 
 # Replace the placeholder with the organization name
-$loginbanner = $disclaimerBlock -replace "ORGANIZATIONNAME", $organizationName
+$legalnoticetext = $disclaimerBlock -replace "ORGANIZATIONNAME", $organizationName
 
 try {
     # Get the current login banner text
     $currentBanner = Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "legalnoticetext" -ErrorAction SilentlyContinue
 
-    if ($currentBanner.legalnoticetext -ne $loginbanner) {
+    if ($currentBanner.legalnoticetext -ne $legalnoticetext) {
         # Set the registry keys for the login banner
-        Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "legalnoticecaption" -Value "Login Banner"
-        Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "legalnoticetext" -Value $loginbanner
+        Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "legalnoticecaption" -Value $legalnoticecaption
+        Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "legalnoticetext" -Value $legalnoticetext
 
         Write-Verbose "Login banner has been set successfully."
     } else {
