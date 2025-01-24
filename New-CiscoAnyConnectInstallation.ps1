@@ -27,7 +27,6 @@ $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 #define paths
 $provider = "Nexigen"
 $LocalPath = "c:\$($provider)\Cisco_AnyConnect"
-$LogFile = "$LocalPath\install_log.txt"
 
 Write-Verbose "Checking for old versions of the application."
 #avoid querying Win32_Product by filtering registry uninstall values for this app name
@@ -44,6 +43,7 @@ $registryPaths = @(
 $Products = foreach ($path in $registryPaths) { Get-ItemProperty $path -ErrorAction SilentlyContinue | Where-Object { ($_.DisplayName -match $appName) -and ($_.UninstallString -match "MsiExec.exe") } | Select-Object -ExpandProperty PSChildName }
 foreach ($Product in $Products) { 
     Write-Verbose "Calling uninstall for $Product."
+    $LogFile = "$LocalPath\uninstall.log"
     $argumentList = @(
         "/X$product"
         "/norestart"
@@ -98,10 +98,12 @@ Copy-Item -Path $LocalUserPreferences -Destination "$DestinationUserPreferencesP
 
 Write-Verbose "Installing core components."
 # Install the MSI quietly without restarting and create a log file
+$LogFile = "$LocalPath\install_core.log"
 Start-Process msiexec.exe -ArgumentList "/i $LocalInstaller /quiet /norestart /log $LogFile" -Wait
 
 Write-Verbose "Installing additional components."
 # Install the MSI quietly without restarting and create a log file
+$LogFile = "$LocalPath\install_sbl.log"
 Start-Process msiexec.exe -ArgumentList "/i $LocalSBLInstaller /quiet /norestart /log $LogFile" -Wait
     
 #Set-ExecutionPolicy $originalExecutionPolicy
