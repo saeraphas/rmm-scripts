@@ -19,7 +19,6 @@ It then installs the client quietly without restarting the system and copies the
 	https://github.com/saeraphas/
 
 #>
-
 [CmdletBinding()]
 
 $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -70,7 +69,7 @@ $RemoteUserPreferences = "https://nocinstallerstorage.blob.core.windows.net/root
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 # Create local staging directory if it doesn't exist
-if (-Not (Test-Path -Path $LocalPath)) { New-Item -ItemType Directory -Path $LocalPath -Force | Out-Null}
+if (-Not (Test-Path -Path $LocalPath)) { New-Item -ItemType Directory -Path $LocalPath -Force | Out-Null }
 
 # Hide download progress
 Set-Variable ProgressPreference SilentlyContinue
@@ -88,9 +87,9 @@ $DestinationProfilePath = "C:\ProgramData\Cisco\Cisco Secure Client\VPN\Profile"
 $DestinationGlobalPreferencesPath = "C:\ProgramData\Cisco\Cisco Secure Client"
 $DestinationUserPreferencesPath = "C:\Users\$env:USERNAME\AppData\Local\Cisco\Cisco Secure Client"
 
-if (-Not (Test-Path -Path $DestinationProfilePath)) { New-Item -ItemType Directory -Path $DestinationProfilePath -Force }
-if (-Not (Test-Path -Path $DestinationGlobalPreferencesPath)) { New-Item -ItemType Directory -Path $DestinationGlobalPreferencesPath -Force }
-if (-Not (Test-Path -Path $DestinationUserPreferencesPath)) { New-Item -ItemType Directory -Path $DestinationUserPreferencesPath -Force }
+if (-Not (Test-Path -Path $DestinationProfilePath)) { New-Item -ItemType Directory -Path $DestinationProfilePath -Force | Out-Null }
+if (-Not (Test-Path -Path $DestinationGlobalPreferencesPath)) { New-Item -ItemType Directory -Path $DestinationGlobalPreferencesPath -Force Out-Null }
+if (-Not (Test-Path -Path $DestinationUserPreferencesPath)) { New-Item -ItemType Directory -Path $DestinationUserPreferencesPath -Force Out-Null }
 
 Copy-Item -Path $LocalProfile -Destination "$DestinationProfilePath\profile.xml" -Force
 Copy-Item -Path $LocalGlobalPreferences -Destination "$DestinationGlobalPreferencesPath\preferences_global.xml" -Force
