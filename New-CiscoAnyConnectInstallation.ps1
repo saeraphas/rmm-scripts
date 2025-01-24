@@ -20,6 +20,7 @@ It then installs the client quietly without restarting the system and copies the
 
 #>
 [CmdletBinding()]
+Param()
 
 $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
@@ -44,7 +45,7 @@ $Products = foreach ($path in $registryPaths) { Get-ItemProperty $path -ErrorAct
 foreach ($Product in $Products) { 
     Write-Verbose "Calling uninstall for $Product."
     $argumentList = @(
-        "/uninstall $product"
+        "/X$product"
         "/norestart"
         "/quiet"
         "/log $LogFile"
