@@ -24,7 +24,6 @@ It then installs the client quietly without restarting the system and copies the
 
 $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
-
 #define paths
 $provider = "Nexigen"
 $LocalPath = "c:\$($provider)\Cisco_AnyConnect"
