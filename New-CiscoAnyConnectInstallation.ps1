@@ -88,8 +88,8 @@ $DestinationGlobalPreferencesPath = "C:\ProgramData\Cisco\Cisco Secure Client"
 $DestinationUserPreferencesPath = "C:\Users\$env:USERNAME\AppData\Local\Cisco\Cisco Secure Client"
 
 if (-Not (Test-Path -Path $DestinationProfilePath)) { New-Item -ItemType Directory -Path $DestinationProfilePath -Force | Out-Null }
-if (-Not (Test-Path -Path $DestinationGlobalPreferencesPath)) { New-Item -ItemType Directory -Path $DestinationGlobalPreferencesPath -Force Out-Null }
-if (-Not (Test-Path -Path $DestinationUserPreferencesPath)) { New-Item -ItemType Directory -Path $DestinationUserPreferencesPath -Force Out-Null }
+if (-Not (Test-Path -Path $DestinationGlobalPreferencesPath)) { New-Item -ItemType Directory -Path $DestinationGlobalPreferencesPath -Force | Out-Null }
+if (-Not (Test-Path -Path $DestinationUserPreferencesPath)) { New-Item -ItemType Directory -Path $DestinationUserPreferencesPath -Force | Out-Null }
 
 Copy-Item -Path $LocalProfile -Destination "$DestinationProfilePath\profile.xml" -Force
 Copy-Item -Path $LocalGlobalPreferences -Destination "$DestinationGlobalPreferencesPath\preferences_global.xml" -Force
