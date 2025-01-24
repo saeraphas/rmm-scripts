@@ -41,7 +41,7 @@ $registryPaths = @(
     "HKCU:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*"
 )
 
-$Products = foreach ($path in $registryPaths) { Get-ItemProperty $path -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match $appName } | Select-Object -ExpandProperty PSChildName }
+$Products = foreach ($path in $registryPaths) { Get-ItemProperty $path -ErrorAction SilentlyContinue | Where-Object { ($_.DisplayName -match $appName) -and ($_.UninstallString -match "MsiExec.exe") } | Select-Object -ExpandProperty PSChildName }
 foreach ($Product in $Products) { 
     Write-Verbose "Calling uninstall for $Product."
     $argumentList = @(
