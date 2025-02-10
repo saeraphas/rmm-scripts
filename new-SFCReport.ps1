@@ -36,6 +36,24 @@ function checkReportAge {
     Write-Verbose "SFC log is $dateDiff days old."
     if ($dateDiff -gt $SFCRunThresholdDays) {
         Write-Verbose "Continuing."
+        startSFC
+    } else { 
+        Write-Verbose "Exiting."
+        exit 
+    }
+}
+
+function checkReboot {
+    Write-Verbose "Checking whether the device has been restarted since last scan."
+    $lastModifiedDate = (Get-Item $SFCLog).LastWriteTime
+    $lastBootupTime = (Get-CimInstance -ClassName Win32_OperatingSystem).LastBootUpTime
+    $rebootedSinceLastRun = ($lastBootupTime -gt $lastModifiedDate)
+    Write-Verbose "Last scan time: $lastModifiedDate"
+    Write-Verbose "Last reboot time: $lastBootupTime"
+    Write-Verbose "Device has been restarted since last scan: $rebootedSinceLastRun."
+    if ($rebootedSinceLastRun ) {
+        Write-Verbose "Continuing."
+        #startSFC
     } else { 
         Write-Verbose "Exiting."
         exit 
@@ -45,12 +63,14 @@ function checkReportAge {
 function checkStorage {
     Write-Verbose "Checking whether processing should be delayed based on presence of virtual disks."
     $sleepTimeMaxMinutes = 30
-    $diskMake = Get-PhysicalDisk | Where-Object { $_.DeviceID -eq '0' } | Select-Object -ExpandProperty Manufacturer
+    $diskManufacturer = Get-PhysicalDisk | Where-Object { $_.DeviceID -eq '0' } | Select-Object -ExpandProperty Manufacturer
+    if ($null -eq $diskManufacturer) {$diskManufacturer = "not specified"}
     $sleepTimeSeconds = (Get-Random -Minimum 0 -Maximum (60 * $sleepTimeMaxMinutes))
-    switch ($diskMake) {
-        { $diskMake -eq "Msft" } { Write-Verbose "Sleeping for $sleepTimeMaxMinutes minutes." ; Start-Sleep -Seconds $sleepTimeSeconds }
-        { $diskMake -eq "VMware" } { Write-Verbose "Sleeping for $sleepTimeMaxMinutes minutes." ; Start-Sleep -Seconds $sleepTimeSeconds }
-        Default {Write-Verbose "Continuing."}
+    Write-Verbose "Disk manufacturer is $diskManufacturer."
+    switch ($diskManufacturer) {
+        { $diskManufacturer -eq "Msft" } { Write-Verbose "Sleeping for $sleepTimeMaxMinutes minutes." ; Start-Sleep -Seconds $sleepTimeSeconds }
+        { $diskManufacturer -eq "VMware" } { Write-Verbose "Sleeping for $sleepTimeMaxMinutes minutes." ; Start-Sleep -Seconds $sleepTimeSeconds }
+        Default { Write-Verbose "Continuing." }
     }
 }
 
@@ -60,11 +80,11 @@ function checkOutput {
     )
     Write-Verbose "Checking whether new scan should run based on SFC log status summary."
     switch ($output) {
-        { $null -eq $_ } { startSFC } #this will be the case if previous run was interrupted 
-        { $_ -match "Windows Resource Protection did not find any integrity violations." } { Write-Verbose "Exiting."; exit } #no need to run if last output was OK
+        { $null -eq $_ } { startSFC } #this will be the case if previous run was interrupted
+        { $_ -match "Windows Resource Protection did not find any integrity violations." } { checkReportAge }
         { $_ -match "Windows Resource Protection found corrupt files and successfully repaired them." } { startSFC } #run again if things were fixed
-        { $_ -match "There is a system repair pending which requires reboot to complete." } { Write-Verbose "Exiting."; exit } #no need to re-run if waiting on reboot
-        Default { checkReportAge }
+        { $_ -match "There is a system repair pending which requires reboot to complete." } { checkReboot }
+        Default { startSFC }
     }
 }
 
@@ -79,7 +99,7 @@ function readSFCLog {
     )
     Write-Verbose "Checking SFC log for matching statuses."
     $StatusSummary = Get-Content -Path $SFCLog -Encoding unicode | Where-Object { $_ -match "Windows Resource Protection" -or $_ -match "system repair pending" } | Select-Object -First 1
-    if ($null -eq $StatusSummary){$StatusSummary = "SFC log does not contain a matching status."}
+    if ($null -eq $StatusSummary) { $StatusSummary = "SFC log does not contain a matching status." }
     Write-Verbose "Status Summary: $StatusSummary"
     return $StatusSummary
 }
