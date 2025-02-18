@@ -53,7 +53,7 @@ function checkReboot {
     Write-Verbose "Device has been restarted since last scan: $rebootedSinceLastRun."
     if ($rebootedSinceLastRun ) {
         Write-Verbose "Continuing."
-        #startSFC
+        startSFC
     } else { 
         Write-Verbose "Exiting."
         exit 
