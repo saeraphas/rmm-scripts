@@ -10,8 +10,15 @@ begin {
     }
 }
 process {
+    $Win11ManualUpgradeLogPath = "C:\Nexigen\Win11Upgrade.log"
+    $StartTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $MessageText = "Win11 Upgrade in place attempt starting at $StartTime."
+    Write-Output $MessageText | Out-File -FilePath $Win11ManualUpgradeLogPath -Append
+
     if (-not (Test-IsElevated)) {
-        Write-Error -Message "Access Denied. Please run with Administrator privileges."
+        $MessageText = "Access Denied. Please run with Administrator privileges."
+        Write-Error -Message $MessageText
+        Write-Output $MessageText | Out-File -FilePath $Win11ManualUpgradeLogPath -Append
         exit 1
     }
 
@@ -26,18 +33,49 @@ process {
     $TargetResult = Get-ItemProperty @Splat
     $OfferResult = Get-ItemProperty -Path "HKLM:SOFTWAREMicrosoftWindowsUpdateUXSettings" -Name "SvOfferDeclined" -ErrorAction SilentlyContinue
     if ($null -ne $TargetResult -or $null -ne $OfferResult) {
-        Write-Host "Failed to enable Windows 11 Upgrade."
+        $MessageText = "Failed to enable Windows 11 Upgrade."
+        Write-Error $MessageText
+        Write-Output $MessageText | Out-File -FilePath $Win11ManualUpgradeLogPath -Append
         exit 1
+    }
+
+    $WebClient = New-Object System.Net.WebClient
+
+    # URL to Windows 11 Update Assistant
+    $Win11UpgradeURL = "https://go.microsoft.com/fwlink/?linkid=2171764"
+    $UpgradePath = "$env:TEMP\Windows11InstallationAssistant.exe"
+    $Win11UpgradeUtilityExists = Test-Path $UpgradePath
+    If (-not $Win11UpgradeUtilityExists) {
+        try {
+            $WebClient.DownloadFile($Win11UpgradeURL, $UpgradePath)
+        }
+        catch {
+            $MessageText = "Downloading Upgrade Utility from $Win11Upgrade failed."
+            Write-Error $MessageText
+            Write-Output $MessageText | Out-File -FilePath $Win11ManualUpgradeLogPath -Append
+        }
+    }
+    $Win11UpgradeUtilityExists = Test-Path $UpgradePath
+    If ($Win11UpgradeUtilityExists) {
+        try {
+            Start-Process -FilePath $UpgradePath -ArgumentList "/Install /MinimizeToTaskBar /QuietInstall /SkipEULA"        
+        }
+        catch {
+            $MessageText = "Starting Upgrade Utility $UpgradePath failed."
+            Write-Error $MessageText
+            Write-Output $MessageText | Out-File -FilePath $Win11ManualUpgradeLogPath -Append
+        }
+    }
+    else {
+        $MessageText = "Upgrade Utility not found at $UpgradePath."
+        Write-Error $MessageText
+        Write-Output $MessageText | Out-File -FilePath $Win11ManualUpgradeLogPath -Append
     }
     exit 0
 }
 
-$WebClient = New-Object System.Net.WebClient
-
-# URL to Windows 11 Update Assistant
-$Win11UpgradeURL = "https://go.microsoft.com/fwlink/?linkid=2171764"
-$UpgradePath = "$env:TEMP\Windows11InstallationAssistant.exe"
-$WebClient.DownloadFile($Win11UpgradeURL, $UpgradePath)
-
-Start-Process -FilePath $UpgradePath -ArgumentList "/Install  /MinimizeToTaskBar /QuietInstall /SkipEULA"
-end {}
+end {
+    $StopTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $MessageText = "Win11 Upgrade in place attempt finished at $StopTime."
+    Write-Output $MessageText | Out-File -FilePath $Win11ManualUpgradeLogPath -Append
+}
