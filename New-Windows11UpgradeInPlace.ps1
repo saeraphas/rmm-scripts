@@ -10,7 +10,9 @@ begin {
     }
 }
 process {
-    $Win11ManualUpgradeLogPath = "C:\Nexigen\Win11Upgrade.log"
+    $Win11ManualUpgradeLogDirectory = "C:\Nexigen"
+    If (-not (Test-Path -Path $Win11ManualUpgradeLogDirectory)) {New-Item -ItemType Directory -Path $Win11ManualUpgradeLogDirectory -Force}
+    $Win11ManualUpgradeLogPath = "$Win11ManualUpgradeLogDirectory\Win11Upgrade.log"
     $StartTime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $MessageText = "Win11 Upgrade in place attempt starting at $StartTime."
     Write-Output $MessageText | Out-File -FilePath $Win11ManualUpgradeLogPath -Append
@@ -58,7 +60,7 @@ process {
     $Win11UpgradeUtilityExists = Test-Path $UpgradePath
     If ($Win11UpgradeUtilityExists) {
         try {
-            Start-Process -FilePath $UpgradePath -ArgumentList "/Install /MinimizeToTaskBar /QuietInstall /SkipEULA"        
+            Start-Process -FilePath $UpgradePath -ArgumentList "/Install /MinimizeToTaskBar /QuietInstall /SkipEULA /copylogs $Win11ManualUpgradeLogDirectory"        
         }
         catch {
             $MessageText = "Starting Upgrade Utility $UpgradePath failed."
