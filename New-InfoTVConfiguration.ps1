@@ -107,7 +107,6 @@ if (-not (Test-Path $registryKeyPath)) { New-Item -Path $registryKeyPath -Force 
 Set-ItemProperty -Path $registryKeyPath -Name $propertyName -Value $propertyValue -Type $propertyType -Force
 
 
-
 #make the Nexigen directory
 $path = "C:\Nexigen"
 if (-not (Test-Path $path)){ New-Item -ItemType Directory -Path $path -Force }
