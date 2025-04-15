@@ -89,6 +89,25 @@ Set-ItemProperty -Path "HKCU:\SOFTWARE\Policies\Microsoft\Edge" -Name "StartupBo
 Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Edge" -Name "StartupBoostEnabled" -Type "DWord" -Value 0 -Force
 
 
+#disable edge "restore pages" prompt
+$registryKeyPath = "HKCU:\SOFTWARE\Policies\Microsoft\Edge\"
+$propertyName = "HideRestoreDialogEnabled"
+$propertyValue = "1"
+$propertyType = "DWord"
+if (-not (Test-Path $registryKeyPath)) { New-Item -Path $registryKeyPath -Force }
+Set-ItemProperty -Path $registryKeyPath -Name $propertyName -Value $propertyValue -Type $propertyType -Force
+
+
+#disable edge first run prompt
+$registryKeyPath = "HKCU:\SOFTWARE\Policies\Microsoft\Edge\"
+$propertyName = "HideFirstRunExperience"
+$propertyValue = "1"
+$propertyType = "DWord"
+if (-not (Test-Path $registryKeyPath)) { New-Item -Path $registryKeyPath -Force }
+Set-ItemProperty -Path $registryKeyPath -Name $propertyName -Value $propertyValue -Type $propertyType -Force
+
+
+
 #make the Nexigen directory
 $path = "C:\Nexigen"
 if (-not (Test-Path $path)){ New-Item -ItemType Directory -Path $path -Force }
@@ -99,7 +118,8 @@ if (-not (Test-Path $path)){ New-Item -ItemType Directory -Path $path -Force }
 #Team 2 Display -- https://nexigen.brightgauge.co/dashboards/8a5973ce-44c4-459c-ac48-288430991eba/
 #Service Desk "https://nexigen.brightgauge.co/dashboards/a6ac210c-a389-11e7-aba9-0a23584d9728/"
 #NOC board "https://nexigen.brightgauge.co/dashboards/ae7fcc3d-d7c3-47f0-8a76-7ad525cb40f3/"
-$dashboardBookmark = "https://nexigen.brightgauge.co/dashboards/ae7fcc3d-d7c3-47f0-8a76-7ad525cb40f3/"
+#Operations Performance "https://nexigen.brightgauge.co/dashboards/0216fa13-aa38-48c4-b105-f2617f174928/"
+$dashboardBookmark = "https://nexigen.brightgauge.co/dashboards/0216fa13-aa38-48c4-b105-f2617f174928/"
 $scriptpath = "C:\Nexigen\Load_Gauges.cmd"
 $scriptContents = @"
 taskkill /f /im msedge.exe
