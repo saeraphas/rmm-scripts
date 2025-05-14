@@ -20,6 +20,5 @@ $argumentlist = @(
 )
 
 Write-Output $argumentlist
-$Production = $false
-If ($FileExists -and $File2Exists -and $Production) {Start-Process msiexec -ArgumentList $argumentlist}
+If ($FileExists -and $File2Exists) {Start-Process msiexec -ArgumentList $argumentlist}
 
