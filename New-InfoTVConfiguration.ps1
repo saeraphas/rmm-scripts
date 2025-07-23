@@ -118,6 +118,7 @@ if (-not (Test-Path $path)){ New-Item -ItemType Directory -Path $path -Force }
 #Service Desk "https://nexigen.brightgauge.co/dashboards/a6ac210c-a389-11e7-aba9-0a23584d9728/"
 #NOC board "https://nexigen.brightgauge.co/dashboards/ae7fcc3d-d7c3-47f0-8a76-7ad525cb40f3/"
 #Operations Performance "https://nexigen.brightgauge.co/dashboards/0216fa13-aa38-48c4-b105-f2617f174928/"
+#3CX Wallboard "https://pbx.nexigen.com:5001/#/wallboard"
 $dashboardBookmark = "https://nexigen.brightgauge.co/dashboards/0216fa13-aa38-48c4-b105-f2617f174928/"
 $scriptpath = "C:\Nexigen\Load_Gauges.cmd"
 $scriptContents = @"
