@@ -25,7 +25,8 @@ param()
 
 $provider = "Nexigen"
 $SFCLog = "C:\$($provider)\SFC.txt"
-$output = "SFC log not yet parsed."
+$RMMStatus = $null
+$RMMDetail = "SFC log not yet parsed."
 
 function checkReportAge {
     Write-Verbose "Checking whether new scan should run based on SFC log age."
@@ -37,7 +38,8 @@ function checkReportAge {
     if ($dateDiff -gt $SFCRunThresholdDays) {
         Write-Verbose "Continuing."
         startSFC
-    } else { 
+    }
+    else { 
         Write-Verbose "Exiting."
         exit 
     }
@@ -54,7 +56,8 @@ function checkReboot {
     if ($rebootedSinceLastRun ) {
         Write-Verbose "Continuing."
         startSFC
-    } else { 
+    }
+    else { 
         Write-Verbose "Exiting."
         exit 
     }
@@ -64,7 +67,7 @@ function checkStorage {
     Write-Verbose "Checking whether processing should be delayed based on presence of virtual disks."
     $sleepTimeMaxMinutes = 30
     $diskManufacturer = Get-PhysicalDisk | Where-Object { $_.DeviceID -eq '0' } | Select-Object -ExpandProperty Manufacturer
-    if ($null -eq $diskManufacturer) {$diskManufacturer = "not specified"}
+    if ($null -eq $diskManufacturer) { $diskManufacturer = "not specified" }
     $sleepTimeSeconds = (Get-Random -Minimum 0 -Maximum (60 * $sleepTimeMaxMinutes))
     Write-Verbose "Disk manufacturer is $diskManufacturer."
     switch ($diskManufacturer) {
@@ -74,49 +77,92 @@ function checkStorage {
     }
 }
 
-function checkOutput {
-    param (
-        $output
-    )
-    Write-Verbose "Checking whether new scan should run based on SFC log status summary."
-    switch ($output) {
-        { $null -eq $_ } { startSFC } #this will be the case if previous run was interrupted
-        { $_ -match "Windows Resource Protection did not find any integrity violations." } { checkReportAge }
-        { $_ -match "Windows Resource Protection found corrupt files and successfully repaired them." } { startSFC } #run again if things were fixed
-        { $_ -match "There is a system repair pending which requires reboot to complete." } { checkReboot }
-        Default { startSFC }
-    }
-}
-
 Function startSFC {
     Write-Verbose "Starting new SFC scan."
+    checkStorage
     Start-Process -FilePath "C:\Windows\System32\sfc.exe" -ArgumentList '/scannow' -RedirectStandardOutput $SFCLog -Wait -WindowStyle Hidden
-}
-
-function readSFCLog {
-    param (
-        $SFCLog
-    )
-    Write-Verbose "Checking SFC log for matching statuses."
-    $StatusSummary = Get-Content -Path $SFCLog -Encoding unicode | Where-Object { $_ -match "Windows Resource Protection" -or $_ -match "system repair pending" } | Select-Object -First 1
-    if ($null -eq $StatusSummary) { $StatusSummary = "SFC log does not contain a matching status." }
-    Write-Verbose "Status Summary: $StatusSummary"
-    return $StatusSummary
 }
 
 Write-Verbose "Checking for existing SFC log file."
 $fileExists = Test-Path -Path $SFCLog
 
-if ($fileExists) {
-    Write-Verbose "Existing SFC log file found."
-    checkStorage
-    $output = readSFCLog($SFCLog)
-    checkOutput($output)
-} else {
+if (-not $fileExists) {
     Write-Verbose "Existing SFC log file NOT found."
-    checkStorage
     startSFC
-    $output = readSFCLog($SFCLog)
+} else {
+    Write-Verbose "Checking SFC log for matching statuses."
+
+    $statusGoodStrings = @(
+        "Windows Resource Protection did not find any integrity violations.",
+        "Protección de recursos de Windows no encontró ninguna infracción"
+    )
+    $statusRetryStrings = @(
+        "Windows Resource Protection found corrupt files and successfully repaired them.",
+        "Protección de recursos de Windows encontró archivos corruptos y los reparó correctamente."
+    )
+    $statusRebootPendingStrings = @(
+        "There is a system repair pending which requires a reboot to complete.",
+        "Hay una reparación del sistema pendiente que requiere reiniciar para completarla."
+    )
+    $statusFailStrings = @(
+        "Windows Resource Protection found corrupt files but was unable to fix some of them.",
+        "Protección de recursos de Windows encontró archivos corruptos pero no pudo corregir algunos de ellos.",
+        "Windows Resource Protection could not start the repair service.",
+        "SFC log does not contain a matching status."
+        "SFC log does not exist."
+    )
+
+    $allStatusStrings = $statusGoodStrings + $statusRetryStrings + $statusRebootPendingStrings + $statusFailStrings
+
+# Read and filter lines
+$log = Get-Content -Path $SFCLog -Encoding Unicode 
+
+#since the output of SFC is line-wrapped, we need to join the lines into a single line first, then parse it.
+$singleLineLog = ($log -join ' ') -replace '\s+', ' '
+
+#now we can split the output into separate lines based on the period followed by a capital letter pattern.
+$multilinelog = $singleLineLog -replace '\.(?=\s+[A-Z])', ".`n"
+
+#now we can filter the output to discared lines that begin with "Verification"
+$filteredLog = $multilinelog | Where-Object { $_ -notmatch '^\s*Verification' -and $_ -ne '' }
+
+$filteredLog
+exit
+
+
+# Initialize result list
+    $logSummary = @()
+
+    # Search for each status string
+    foreach ($status in $allStatusStrings) {
+        if ($logContent -match [regex]::Escape($status) + '.*?\.') {
+            $logSummary += $matches[0]
+        }
+    }
+    
+    Write-Verbose "SFC log status summary: $logSummary"
+    Write-Verbose "Checking whether new scan should run based on SFC log status summary."
+
+    #The RMM service monitor doesn't handle localizations other than US English. 
+    #We need to return output from this script as a status code which will actually update the monitor status, as well as a text string for human readable troubleshooting.
+    switch ($logSummary) {
+        { $null -eq $_ } { $RMMStatus = 1; startSFC } #this will be the case if previous run was interrupted
+        { $statusGoodStrings -contains $_ } { $RMMStatus = 0 ; checkReportAge } #run again if the age threshold has been met
+        { $statusRetryStrings -contains $_ } { $RMMStatus = 1 ; startSFC } #run again if things were fixed
+        { $statusRebootPendingStrings -contains $_ } { $RMMStatus = 1 ; checkReboot } #run again if the device has been restarted since last run
+        { $statusFailStrings -contains $_ } { $RMMStatus = 2 } #do nothing, this will generate a ticket
+        Default { $RMMStatus = 1 }
+    }
 }
 
-Set-ExecutionPolicy $originalExecutionPolicy
+
+# Log file should definitely exist at this point, if it does not, return a status that will generate a ticket. 
+$fileExists = Test-Path -Path $SFCLog
+if (-not $fileExists) {
+    $RMMStatus = 2
+    $RMMDetail = "SFC log does not exist."
+}
+
+Write-Verbose "RMM Status is $RMMStatus." 
+Write-Verbose "RMM Detail is $RMMDetail."
+#Set-ExecutionPolicy $originalExecutionPolicy
