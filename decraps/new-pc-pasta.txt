@@ -1,0 +1,111 @@
+
+REM Schedule weekly restart
+schtasks /create /ru system /rl highest /sc WEEKLY /D SAT /tn "Scheduled Weekly Restart" /tr "shutdown /r /f /t 900 /c \"This system will restart in fifteen minutes for regular maintenance. Please save your work and log off at this time. This system is expected to be available again in thirty minutes. Thank you.\"" /st 04:30 /sd 01/01/2020 /F
+
+REM Set Power Preferences
+powercfg -change -standby-timeout-ac 0
+powercfg -change -hibernate-timeout-ac 0
+powercfg -change -monitor-timeout-ac 20
+
+REM Enable RDP
+reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
+
+REM allow RDP
+netsh advfirewall firewall add rule name="Remote Desktop" dir=in action=allow protocol=TCP localport=3389
+
+REM allow PING
+netsh advfirewall firewall add rule name="ICMP Allow incoming V4 echo request" protocol=icmpv4:8,any dir=in action=allow
+netsh advfirewall firewall add rule name="ICMP Allow incoming V6 echo request" protocol=icmpv6:8,any dir=in action=allow
+
+REM disable IE
+dism /online /disable-feature /featurename:Internet-Explorer-Optional-amd64
+
+REM Powershell portion
+powershell -executionpolicy bypass -noprofile 
+# update TLS settings for this current session
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+# update TLS settings 
+Set-ItemProperty -Path 'HKLM:\SOFTWARE\Wow6432Node\Microsoft\.NetFramework\v4.0.30319' -Name 'SchUseStrongCrypto' -Value '1' -Type DWord
+Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319' -Name 'SchUseStrongCrypto' -Value '1' -Type DWord
+
+# hide search box
+Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search' -Name 'SearchboxTaskbarMode' -Value '0' -Type DWord
+
+# hide cortana button
+Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'ShowCortanaButton' -Value '0' -Type DWord
+
+# hide tasks view button
+Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name 'ShowTaskViewButton' -Value '0' -Type DWord
+
+# hide meet now
+Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer' -Name 'HideSCAMeetNow' -Value '1' -Type DWord
+
+# remove preloaded junk
+$excludedApps = '.*photos.*|.*calculator.*|.*alarms.*|.*minecraft.*|.*soundrecorder.*|.*zunevideo.*|.*camera.*|.*xbox.*|.*store.*|.*extension.*|.*screensketch.*|.*mspaint.*'
+$unwantedApps = Get-AppxPackage -PackageTypeFilter Bundle | Where-Object {$_.Name -notmatch $excludedApps}
+If ($unwantedApps) {$unwantedApps | Remove-AppxPackage}
+
+reg load HKU\Default_User C:\Users\Default\NTUSER.DAT
+Set-ItemProperty -Path Registry::HKU\Default_User\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager -Name SystemPaneSuggestionsEnabled -Value 0
+Set-ItemProperty -Path Registry::HKU\Default_User\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager -Name PreInstalledAppsEnabled -Value 0
+Set-ItemProperty -Path Registry::HKU\Default_User\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager -Name OemPreInstalledAppsEnabled -Value 0
+reg unload HKU\Default_User
+
+# install the stuff we actually do want
+#Invoke-WebRequest -UseBasicParsing "https://ninite.com/7zip-chrome-classicstart-edge-notepadplusplus-putty-steam-vlc-winscp/ninite.exe" -Outfile .\ninite.exe; .\ninite.exe
+Invoke-WebRequest -UseBasicParsing "https://ninite.com/7zip-classicstart-edge-notepadplusplus/ninite.exe" -Outfile .\ninite.exe; .\ninite.exe
+
+# remove Edge shortcut
+$shortcutpath = "C:\Users\Public\Desktop\Microsoft Edge.lnk"; If(Test-Path -Path $shortcutpath){Remove-Item -Path $shortcutpath -Force}
+
+# configure Edge
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v HideFirstRunExperience /t REG_DWORD /d 1 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v AutoImportAtFirstRun /t REG_DWORD /d 4 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v BrowserSignin /t REG_DWORD /d 0 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v NonRemovableProfileEnabled /t REG_DWORD /d 0 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v BrowserGuestModeEnabled /t REG_DWORD /d 1 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v SyncDisabled /t REG_DWORD /d 1 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v DefaultBrowserSettingEnabled /t REG_DWORD /d 0 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v AutomaticHttpsDefault /t REG_DWORD /d 1 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\Recommended" /v FavoritesBarEnabled /t REG_DWORD /d 0 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v SpotlightExperiencesAndRecommendationsEnabled /t REG_DWORD /d 0 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v HomepageIsNewTabPage /t REG_DWORD /d 1 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v NewTabPageAllowedBackgroundTypes /t REG_DWORD /d 3 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v NewTabPageContentEnabled /t REG_DWORD /d 0 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v NewTabPageHideDefaultTopSites /t REG_DWORD /d 1 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v NewTabPageQuickLinksEnabled /t REG_DWORD /d 0 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v EdgeShoppingAssistantEnabled /t REG_DWORD /d 0 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v ShowMicrosoftRewards /t REG_DWORD /d 0 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v EnableMediaRouter /t REG_DWORD /d 1 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v ShowCastIconInToolbar /t REG_DWORD /d 1 /f
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge" /v MediaRouterCastAllowAllIPs /t REG_DWORD /d 1 /f
+
+# PSWindowsUpdate
+If (!(Get-PackageProvider -ListAvailable -Name NuGet)) {Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force}
+If (!(Get-Module -ListAvailable -Name PSWindowsUpdate)) {Install-Module PSWindowsUpdate -Force} 
+Import-Module PSWindowsUpdate
+Add-WUServiceManager -ServiceID "7971f918-a847-4430-9279-4a52d1efe18d" -AddServiceFlag 7 -Confirm:$false
+Get-WindowsUpdate
+Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -AutoReboot
+
+# winget
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+mkdir c:\temp -force | out-null
+$ProgressPreference = 'SilentlyContinue'
+Invoke-WebRequest -usebasicparsing "https://github.com/microsoft/winget-cli/releases/download/v1.0.11692/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -outfile c:\temp\winget.msixbundle
+add-appxpackage c:\temp\winget.msixbundle
+
+# windows terminal
+winget install --id=Microsoft.WindowsTerminal -e
+
+# winget upgrade
+winget upgrade
+winget upgrade VLC
+
+#update powershellget
+Find-Module powershellget | Install-Module
+
+#powershell enable openssh server
+Add-WindowsCapability -Online -Name OpenSSH.Server*
+New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH SSH Server' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22 -Program "C:\System32\OpenSSH\sshd.exe"
