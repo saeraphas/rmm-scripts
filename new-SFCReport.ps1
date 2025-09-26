@@ -151,7 +151,7 @@ if ($RMMStatus -eq 0) {
         "Protección de recursos de Windows encontró archivos corruptos y los reparó correctamente."
     )
     $statusRebootPendingStrings = @(
-        "There is a system repair pending which requires a reboot to complete.",
+        "There is a system repair pending which requires reboot to complete.",
         "Hay una reparación del sistema pendiente que requiere reiniciar para completarla."
     )
     $statusFailStrings = @(
@@ -186,9 +186,6 @@ if ($RMMStatus -eq 0) {
         startSFC
     }
 }
-
-#temporary workaround for RMM service monitor only checking for english localization
-if ($statusGoodStrings -contains $RMMDetail ) { $output = "Windows Resource Protection did not find any integrity violations." } else {$output -eq $RMMDetail}
 
 Write-Verbose "RMM Status is $RMMStatus." 
 Write-Verbose "RMM Detail is $RMMDetail"
