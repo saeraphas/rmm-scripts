@@ -152,7 +152,7 @@ if ($RMMStatus -eq 0) {
     )
     $statusRebootPendingStrings = @(
         "There is a system repair pending which requires reboot to complete.",
-        "Hay una reparación del sistema pendiente que requiere reiniciar para completarla."
+        "Está pendiente una reparación del sistema que requiere reiniciar para completarse."
     )
     $statusFailStrings = @(
         "Windows Resource Protection found corrupt files but was unable to fix some of them.",
