@@ -116,6 +116,14 @@ if (-not $fileExists) {
     }
 }
 
+# On Windows versions  older than 8.1 or Server 2012R2, SFC generates excessive temp files which cascade into other problems.
+# We're choosing not to support it on these OS. 
+$unsupportedOS = [int](Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').CurrentBuild -lt 9600
+    if ($unsupportedOS) {
+        $RMMStatus = 1
+        $RMMDetail = "SFC Monitoring skipped on unsupported OS."
+    }
+    
 # Let's check the log file contents if we haven't already decided to return an error.
 # The log file contains a lot of extraneous information, so we will filter and reformat it before we start checking for statuses. 
 if ($RMMStatus -eq 0) {
